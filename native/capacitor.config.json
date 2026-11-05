@@ -1,0 +1,13 @@
+{
+  "appId": "com.supersonicandchill.emsnarrator",
+  "appName": "EMS Narrator",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 0
+    }
+  }
+}

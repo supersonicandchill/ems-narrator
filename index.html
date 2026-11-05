@@ -1,0 +1,1571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1a2f4a">
+<meta name="color-scheme" content="light only">
+<title>EMS Narrator</title>
+<style>
+html{color-scheme:light only;background:#1a2f4a !important}
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --slate:#1a2f4a;--slate2:#2d4563;--slate3:#3d5a80;
+  --red:#e63946;--orange:#f77f00;--blue:#457b9d;
+  --green:#06a77d;--bg:#f0f2f5;--white:#ffffff;
+  --border:#d0d5db;--text:#1a2f4a;--muted:#6b7280;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--slate);min-height:100vh}
+
+/* ── LAYOUT ── */
+.app{max-width:1400px;margin:0 auto;display:grid;grid-template-rows:auto 1fr;min-height:100vh}
+.main{display:grid;grid-template-columns:320px 1fr 340px;gap:0;min-height:0}
+@media(max-width:1100px){.main{grid-template-columns:260px 1fr}}
+@media(max-width:780px){.main{grid-template-columns:1fr;grid-template-rows:auto auto auto}}
+
+/* ── HEADER ── */
+.header{background:var(--slate);color:white;padding:1rem 1.5rem;display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid var(--red);gap:1rem;flex-wrap:wrap}
+.logo{font-size:1.5rem;font-weight:900;letter-spacing:1.5px}
+.logo span{color:var(--orange)}
+.header-controls{display:flex;gap:.8rem;align-items:center;flex-wrap:wrap}
+select.unit{padding:.5rem .8rem;border:2px solid var(--orange);border-radius:.4rem;background:white;color:var(--slate);font-weight:700;font-size:.9rem}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;padding:.5rem 1rem;border:none;border-radius:.4rem;font-weight:700;font-size:.85rem;cursor:pointer;transition:all .15s ease;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+.btn-slate{background:var(--slate2);color:white}.btn-slate:hover{background:var(--slate3)}
+.btn-red{background:var(--red);color:white}.btn-red:hover{background:#c0303b}
+.btn-blue{background:var(--blue);color:white}.btn-blue:hover{background:#35627f}
+.btn-green{background:var(--green);color:white}.btn-green:hover{background:#058a68}
+.btn-orange{background:var(--orange);color:white}.btn-orange:hover{background:#d96e00}
+.btn-gray{background:#888;color:white}.btn-gray:hover{background:#666}
+.btn-sm{padding:.4rem .8rem;font-size:.78rem}
+.btn.loading{opacity:.55;pointer-events:none}
+
+/* ── LEFT: ACTION BUTTONS ── */
+.action-panel{background:var(--white);border-right:1px solid var(--border);overflow-y:auto;padding:1.2rem}
+.sec{margin-bottom:1.6rem}
+.sec-label{font-size:.78rem;font-weight:900;color:var(--slate);text-transform:uppercase;letter-spacing:.8px;margin-bottom:.6rem;padding-bottom:.4rem;border-bottom:2px solid var(--orange)}
+.action-grid{display:flex;flex-direction:column;gap:.45rem}
+.action-btn{width:100%;padding:.65rem .9rem;background:var(--bg);border:1.5px solid var(--border);border-radius:.4rem;text-align:left;font-size:.9rem;font-weight:600;color:var(--text);cursor:pointer;transition:all .15s;display:flex;justify-content:space-between;align-items:center}
+.action-btn:hover{border-color:var(--orange);background:#fff8f0;color:var(--orange)}
+.action-btn:active{transform:scale(.98)}
+.action-btn.has-outcome{border-left:3px solid var(--blue)}
+.badge{background:var(--red);color:white;font-size:.7rem;font-weight:800;padding:.1rem .4rem;border-radius:.9rem;min-width:1.3rem;text-align:center}
+
+/* ── CENTER: EVENT LOG ── */
+.log-panel{background:var(--bg);display:flex;flex-direction:column;min-height:0}
+.log-header{padding:1rem 1.5rem;background:var(--white);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.log-title{font-size:1rem;font-weight:800;color:var(--slate);text-transform:uppercase;letter-spacing:.5px}
+.log-subtitle{font-size:.8rem;color:var(--muted);margin-top:.1rem}
+.log-body{flex:1;overflow-y:auto;padding:1rem 1.5rem;display:flex;flex-direction:column;gap:.6rem}
+.log-empty{color:var(--muted);font-style:italic;font-size:.95rem;text-align:center;margin-top:3rem}
+.log-entry{background:var(--white);border:1px solid var(--border);border-radius:.5rem;padding:.7rem 1rem;display:flex;align-items:flex-start;gap:.8rem;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.log-entry.outcome-success{border-left:3px solid var(--green)}
+.log-entry.outcome-fail{border-left:3px solid var(--red)}
+.log-num{font-size:.75rem;font-weight:900;color:var(--muted);min-width:1.4rem;padding-top:.1rem}
+.log-text{flex:1}
+.log-item-name{font-weight:700;font-size:.93rem;color:var(--text)}
+.log-meta{font-size:.78rem;color:var(--muted);margin-top:.1rem}
+.log-outcome{font-size:.78rem;font-weight:700;margin-top:.2rem}
+.log-outcome.ok{color:var(--green)}
+.log-outcome.fail{color:var(--red)}
+.log-del{background:none;border:none;color:var(--border);font-size:1rem;cursor:pointer;padding:.1rem .3rem;line-height:1;transition:color .15s}
+.log-del:hover{color:var(--red)}
+
+/* ── RIGHT: NARRATIVE ── */
+.nar-panel{background:var(--white);border-left:1px solid var(--border);display:flex;flex-direction:column;min-height:0}
+@media(max-width:1100px){.nar-panel{display:none}}
+@media(max-width:780px){.nar-panel{display:flex;border-left:none;border-top:1px solid var(--border)}}
+.nar-header{padding:1rem 1.5rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap}
+.nar-title{font-size:1rem;font-weight:800;color:var(--slate);text-transform:uppercase;letter-spacing:.5px}
+.nar-body{flex:1;overflow-y:auto;padding:1.2rem 1.5rem}
+.nar-text{font-size:.9rem;line-height:1.9;color:var(--text);white-space:pre-wrap;word-wrap:break-word;font-family:"Courier New",monospace;min-height:200px}
+.nar-text.empty{font-family:sans-serif;color:#aaa;font-style:italic}
+.nar-status{font-size:.78rem;color:var(--muted);font-style:italic;padding:.4rem 1.5rem;border-top:1px solid var(--border)}
+.nar-actions{padding:1rem 1.5rem;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:.7rem}
+.nar-row{display:flex;gap:.6rem}
+.nar-row .btn{flex:1}
+
+/* ── MOBILE NAR TOGGLE ── */
+.nar-toggle{display:none;padding:.7rem 1.5rem;background:var(--slate);color:white;font-weight:700;text-align:center;cursor:pointer;font-size:.9rem}
+@media(max-width:1100px){.nar-toggle{display:block}}
+@media(max-width:780px){.nar-toggle{display:none}}
+
+/* ── OUTCOME MODAL ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:white;border-radius:.8rem;padding:2rem;max-width:420px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center}
+.modal-icon{font-size:2.5rem;margin-bottom:.8rem}
+.modal-title{font-size:1.2rem;font-weight:800;color:var(--slate);margin-bottom:.5rem}
+.modal-sub{font-size:.9rem;color:var(--muted);margin-bottom:1.5rem}
+.modal-btns{display:flex;gap:1rem;justify-content:center}
+.modal-btns .btn{min-width:130px;padding:.7rem 1.2rem;font-size:.95rem}
+
+/* ── PROTOCOL MODAL ── */
+.proto-modal{max-width:540px;text-align:left}
+.proto-modal h2{font-size:1.2rem;font-weight:800;color:var(--slate);margin-bottom:1rem}
+.proto-modal label{font-size:.8rem;font-weight:700;text-transform:uppercase;color:var(--slate);display:block;margin-bottom:.3rem}
+.proto-modal textarea{width:100%;min-height:140px;padding:.7rem;border:1px solid var(--border);border-radius:.4rem;font-size:.83rem;font-family:monospace;resize:vertical;margin-bottom:1rem}
+.proto-modal input{width:100%;padding:.6rem;border:1px solid var(--border);border-radius:.4rem;font-size:.9rem;margin-bottom:1rem}
+.proto-modal .info{font-size:.82rem;color:var(--muted);margin-bottom:1rem;line-height:1.5}
+.proto-name{font-weight:700;color:var(--blue);margin-bottom:.5rem}
+.proto-modal .modal-btns{justify-content:flex-start;flex-wrap:wrap}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;padding:.8rem 1.3rem;border-radius:.4rem;font-weight:700;font-size:.9rem;color:white;z-index:1000;animation:toastIn .25s ease;pointer-events:none}
+.toast.ok{background:var(--green)}.toast.err{background:var(--red)}
+@keyframes toastIn{from{transform:translateX(250px);opacity:0}to{opacity:1;transform:none}}
+
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--orange)}
+
+/* ── SPLASH DISCLAIMER ── */
+.splash-overlay{position:fixed;inset:0;background:rgba(10,20,35,.92);z-index:9000;display:flex;align-items:center;justify-content:center;padding:1rem}
+.splash-box{background:white;border-radius:.8rem;max-width:560px;width:100%;box-shadow:0 30px 80px rgba(0,0,0,.5);overflow:hidden}
+.splash-top{background:var(--red);padding:1.4rem 2rem;display:flex;align-items:center;gap:1rem}
+.splash-top .icon{font-size:2.2rem;line-height:1}
+.splash-top h2{color:white;font-size:1.25rem;font-weight:900;letter-spacing:.5px;text-transform:uppercase}
+.splash-body{padding:1.8rem 2rem}
+.splash-body p{font-size:.97rem;line-height:1.75;color:#2d3748;margin-bottom:1.2rem}
+.splash-body p strong{color:var(--red)}
+.splash-check{display:flex;align-items:flex-start;gap:.8rem;background:#fff8f0;border:1.5px solid var(--orange);border-radius:.5rem;padding:1rem 1.2rem;margin-bottom:1.5rem;cursor:pointer}
+.splash-check input[type=checkbox]{width:1.3rem;height:1.3rem;margin-top:.15rem;accent-color:var(--red);cursor:pointer;flex-shrink:0}
+.splash-check label{font-size:.9rem;font-weight:600;color:var(--slate);cursor:pointer;line-height:1.5}
+.splash-btn{width:100%;padding:.9rem;background:var(--slate);color:white;border:none;border-radius:.4rem;font-size:1rem;font-weight:800;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;opacity:.4;pointer-events:none;transition:all .2s}
+.splash-btn.ready{opacity:1;pointer-events:all;background:var(--red)}
+.splash-btn.ready:hover{background:#c0303b}
+
+/* ── WATERMARK BANNER ── */
+.watermark{background:var(--slate);color:#a0aec0;text-align:center;font-size:.78rem;padding:.45rem 1rem;letter-spacing:.2px;border-top:1px solid var(--slate2);flex-shrink:0}
+.watermark a{color:var(--orange);text-decoration:none;font-weight:700}
+.watermark a:hover{text-decoration:underline}
+
+/* ── UNITS MODAL ── */
+.units-modal{max-width:460px;text-align:left}
+.units-modal h2{font-size:1.2rem;font-weight:800;color:var(--slate);margin-bottom:1rem}
+.units-list{display:flex;flex-direction:column;gap:.5rem;margin-bottom:1.2rem;max-height:260px;overflow-y:auto}
+.unit-row{display:flex;align-items:center;gap:.5rem;background:var(--bg);border:1px solid var(--border);border-radius:.4rem;padding:.5rem .7rem}
+.unit-row span{flex:1;font-weight:600;font-size:.9rem}
+.unit-row button{background:none;border:none;color:#aaa;font-size:1rem;cursor:pointer;padding:.1rem .3rem;transition:color .15s}
+.unit-row button:hover{color:var(--red)}
+.unit-add-row{display:flex;gap:.6rem;margin-bottom:1rem}
+.unit-add-row input{flex:1;padding:.6rem;border:1px solid var(--border);border-radius:.4rem;font-size:.9rem}
+.btn-gpt{background:#10a37f;color:white}
+.btn-gpt:hover{background:#0d8a6a;transform:translateY(-1px)}
+
+/* ── SECTION EDIT MODE ── */
+.sec-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem}
+.sec-label{font-size:.78rem;font-weight:900;color:var(--slate);text-transform:uppercase;letter-spacing:.8px;padding-bottom:.4rem;border-bottom:2px solid var(--orange);flex:1}
+.sec-edit-btn{background:none;border:none;color:#bbb;font-size:.85rem;cursor:pointer;padding:.1rem .4rem;margin-left:.5rem;transition:color .15s;text-transform:none;letter-spacing:0;font-weight:600}
+.sec-edit-btn:hover{color:var(--orange)}
+.sec-edit-btn.active{color:var(--orange)}
+.edit-zone{display:none;margin-top:.6rem;padding:.7rem;background:#fffdf9;border:1.5px dashed var(--orange);border-radius:.4rem}
+.edit-zone.open{display:block}
+.edit-add-row{display:flex;gap:.5rem;margin-bottom:.6rem}
+.edit-add-row input{flex:1;padding:.5rem .7rem;border:1px solid var(--border);border-radius:.35rem;font-size:.88rem}
+.edit-add-row button{padding:.5rem .8rem;background:var(--green);color:white;border:none;border-radius:.35rem;font-weight:700;font-size:.82rem;cursor:pointer;white-space:nowrap}
+.edit-add-row button:hover{background:#058a68}
+.edit-outcome-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;font-size:.82rem;color:var(--slate)}
+.edit-outcome-row input[type=checkbox]{accent-color:var(--red);width:1rem;height:1rem}
+.action-btn .del-btn{background:none;border:none;color:#ccc;font-size:.85rem;cursor:pointer;padding:.1rem .3rem;display:none;transition:color .15s;line-height:1}
+.action-btn .del-btn:hover{color:var(--red)}
+.edit-mode .action-btn .del-btn{display:inline-block}
+.edit-mode .action-btn{cursor:default}
+.edit-mode .action-btn .btn-label{pointer-events:none}
+
+/* ── SUBSCRIPTION WALL ── */
+.sub-overlay{position:fixed;inset:0;background:rgba(10,20,35,.95);z-index:8000;display:none;align-items:center;justify-content:center;padding:1rem}
+.sub-overlay.open{display:flex}
+.sub-box{background:white;border-radius:1rem;max-width:420px;width:100%;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.sub-top{background:linear-gradient(135deg,var(--slate) 0%,var(--slate2) 100%);padding:2rem;text-align:center;color:white}
+.sub-top .sub-icon{font-size:3rem;margin-bottom:.5rem}
+.sub-top h2{font-size:1.4rem;font-weight:900;letter-spacing:.5px;margin-bottom:.3rem}
+.sub-top p{font-size:.88rem;opacity:.8}
+.sub-body{padding:1.5rem 2rem}
+.sub-feature{display:flex;align-items:center;gap:.7rem;margin-bottom:.8rem;font-size:.92rem;color:var(--slate)}
+.sub-feature .fi{font-size:1.1rem}
+.sub-price{text-align:center;margin:1.2rem 0;padding:1rem;background:var(--bg);border-radius:.6rem}
+.sub-price .price-main{font-size:2rem;font-weight:900;color:var(--slate)}
+.sub-price .price-sub{font-size:.82rem;color:var(--muted)}
+.sub-cta{width:100%;padding:1rem;background:var(--red);color:white;border:none;border-radius:.5rem;font-size:1rem;font-weight:800;cursor:pointer;text-transform:uppercase;letter-spacing:.5px;margin-bottom:.8rem;transition:background .15s}
+.sub-cta:hover{background:#c0303b}
+.sub-restore{width:100%;padding:.6rem;background:none;border:none;color:var(--muted);font-size:.85rem;cursor:pointer;text-decoration:underline}
+.sub-trial-badge{display:inline-block;background:var(--green);color:white;font-size:.75rem;font-weight:800;padding:.2rem .6rem;border-radius:1rem;text-transform:uppercase;letter-spacing:.4px;margin-bottom:.5rem}
+.trial-bar{background:var(--green);color:white;text-align:center;font-size:.78rem;font-weight:700;padding:.35rem 1rem;letter-spacing:.3px}
+</style>
+</head>
+<body>
+
+<!-- SPLASH DISCLAIMER -->
+<div class="splash-overlay" id="splashOverlay">
+  <div class="splash-box">
+    <div class="splash-top">
+      <div class="icon">⚠️</div>
+      <h2>Important — Please Read Before Using</h2>
+    </div>
+    <div class="splash-body">
+      <p>It is imperative that you <strong>proofread your narrative</strong> before submitting it. This tool is not a replacement for your clinical expertise — it is designed only to help you organize your thoughts quickly and in a logical order to save you time.</p>
+      <p>This app is <strong>not responsible for any mistakes</strong> in your narrative. Your narrative is your responsibility and your responsibility only.</p>
+      <div style="background:#f0f7ff;border:1.5px solid #457b9d;border-radius:.5rem;padding:.9rem 1rem;margin-bottom:1rem;font-size:.88rem;color:#1a2f4a;line-height:1.6">
+        <strong>🆓 3 Free Narratives Every Month</strong><br>
+        Build up to 3 narratives free each month, no charge. Need more? Upgrade to EMS Narrator Pro for $2.99/month — unlimited narratives, cancel anytime in your iPhone Settings under Subscriptions.
+      </div>
+      <div style="background:#fff8f0;border:1.5px solid #f77f00;border-radius:.5rem;padding:.9rem 1rem;margin-bottom:1.2rem;font-size:.85rem;color:#1a2f4a;line-height:1.6">
+        <strong>💬 Questions or Issues?</strong><br>
+        Contact us anytime at <strong>supersonicandchill@gmail.com</strong> — we respond fast and want to make this tool work well for you.
+      </div>
+      <div class="splash-check" onclick="toggleSplashCheck()">
+        <input type="checkbox" id="splashCheck">
+        <label for="splashCheck">I understand. I accept full responsibility for reviewing, editing, and submitting my own narrative. I will not rely on this tool as a substitute for my professional judgment.</label>
+      </div>
+      <button class="splash-btn ready" id="splashBtn" onclick="closeSplash()">Enter App</button>
+    </div>
+  </div>
+</div>
+
+<!-- SUBSCRIPTION WALL -->
+<div class="sub-overlay" id="subOverlay">
+  <div class="sub-box">
+    <div class="sub-top">
+      <div class="sub-icon">🚑</div>
+      <h2>EMS Narrator Pro</h2>
+      <p>You've used your 3 free narratives this month. Upgrade for unlimited.</p>
+    </div>
+    <div class="sub-body">
+      <div class="sub-feature"><span class="fi">⚡</span> Tap-to-log event timeline</div>
+      <div class="sub-feature"><span class="fi">✨</span> AI narrative polishing (Claude &amp; ChatGPT)</div>
+      <div class="sub-feature"><span class="fi">🛠</span> Fully customizable protocols &amp; medications</div>
+      <div class="sub-feature"><span class="fi">📋</span> One-tap copy &amp; download</div>
+      <div class="sub-feature"><span class="fi">🔒</span> Works offline on any call</div>
+      <div class="sub-price">
+        <div class="sub-trial-badge">Unlimited narratives</div>
+        <div class="price-main">$2.99<span style="font-size:1rem;font-weight:400">/mo</span></div>
+        <div class="price-sub">Cancel anytime in Settings</div>
+      </div>
+      <button class="sub-cta" onclick="purchaseSubscription()">Upgrade to Pro</button>
+      <button class="sub-restore" onclick="restorePurchases()">Restore Purchase</button>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+
+<!-- USAGE STATUS BAR (hidden after subscription) -->
+<div class="trial-bar" id="trialBar"></div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo" id="logoTap" onclick="handleLogoTap()" style="cursor:default">EMS <span>NARRATOR</span></div>
+  <div class="header-controls">
+    <select id="medicUnit" class="unit"></select>
+    <button class="btn btn-slate btn-sm" onclick="openApiKeyModal()">🔑 API Key</button>
+    <button class="btn btn-slate btn-sm" onclick="openUnits()">✏ Units</button>
+    <button class="btn btn-slate btn-sm" onclick="openProto()">ℹ Protocol</button>
+    <button class="btn btn-gray btn-sm" onclick="clearAll()">✕ Clear</button>
+  </div>
+</div>
+
+<!-- MOBILE NAR TOGGLE -->
+<div class="nar-toggle" onclick="toggleNarMobile()">📋 View / Hide Narrative</div>
+
+<div class="main">
+
+  <!-- LEFT: ACTION BUTTONS -->
+  <div class="action-panel" id="actionPanel"></div>
+
+  <!-- CENTER: EVENT LOG -->
+  <div class="log-panel">
+    <div class="log-header">
+      <div>
+        <div class="log-title">Event Log</div>
+        <div class="log-subtitle">Tap actions on the left — logged in order</div>
+      </div>
+      <button class="btn btn-red btn-sm" id="generateBtn" onclick="generateNarrative()">✨ Generate Narrative</button>
+    </div>
+    <div class="log-body" id="logBody">
+      <div class="log-empty" id="logEmpty">No events logged yet.<br>Tap actions to begin documenting.</div>
+    </div>
+  </div>
+
+  <!-- RIGHT: NARRATIVE -->
+  <div class="nar-panel" id="narPanel">
+    <div class="nar-header">
+      <div class="nar-title">Narrative</div>
+      <button class="btn btn-gpt btn-sm" onclick="copyGptPrompt()">🤖 Use ChatGPT Instead</button>
+    </div>
+    <div class="nar-body">
+      <div class="nar-text empty" id="narText">Tap "Generate Narrative" to build your report from the event log.</div>
+    </div>
+    <div class="nar-status" id="narStatus"></div>
+    <div class="nar-actions">
+      <div class="nar-row">
+        <button class="btn btn-red" onclick="copyNarrative()">📋 Copy</button>
+        <button class="btn btn-blue" onclick="downloadNarrative()">⬇ Download</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+</div><!-- /app -->
+
+<!-- UNITS MODAL -->
+<div class="modal-overlay" id="unitsModal">
+  <div class="modal units-modal">
+    <h2>✏ Edit Medic Units</h2>
+    <div class="units-list" id="unitsList"></div>
+    <div class="unit-add-row">
+      <input type="text" id="unitInput" placeholder="e.g. Medic 9 or Rescue 3" onkeydown="if(event.key==='Enter')addUnit()">
+      <button class="btn btn-blue btn-sm" onclick="addUnit()">+ Add</button>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-gray" onclick="resetUnits()">Reset to Default</button>
+      <button class="btn btn-slate" onclick="closeUnits()">Done</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal-overlay" id="outcomeModal">
+  <div class="modal">
+    <div class="modal-icon">⚡</div>
+    <div class="modal-title" id="outcomeModalTitle">Outcome</div>
+    <div class="modal-sub" id="outcomeModalSub">Was this intervention successful?</div>
+    <div class="modal-btns">
+      <button class="btn btn-green" onclick="logOutcome('successful')">✔ Successful</button>
+      <button class="btn btn-red" onclick="logOutcome('unsuccessful')">✘ Unsuccessful</button>
+      <button class="btn btn-gray" onclick="logOutcome(null)">Skip</button>
+    </div>
+  </div>
+</div>
+
+<!-- PROTOCOL MODAL -->
+<div class="modal-overlay" id="protoModal">
+  <div class="modal proto-modal">
+    <h2>ℹ Protocol Info</h2>
+    <div class="proto-name" id="protoNameDisplay">Active: GMVEMSC Protocol (Default)</div>
+    <p class="info">EMS Narrator ships with the GMVEMSC (Greater Miami Valley EMS Council) protocol built in. You can add or remove individual items in any section using the ✏ Edit button on that section. Need a different regional protocol loaded? Email <strong>supersonicandchill@gmail.com</strong> and we'll set it up.</p>
+    <div class="modal-btns">
+      <button class="btn btn-gray" onclick="resetProto()">Reset All Customizations to Default</button>
+      <button class="btn btn-slate" onclick="closeProto()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- API KEY MODAL -->
+<div class="modal-overlay" id="apiKeyModal">
+  <div class="modal proto-modal">
+    <h2>🔑 Claude API Key</h2>
+    <p class="info">EMS Narrator uses your own Anthropic API key to generate narratives with Claude. Your key is stored only on this device and is sent directly to Anthropic — never to us. No key? You can still build offline narratives without AI — see below.</p>
+    <label>Anthropic API Key</label>
+    <input type="password" id="apiKeyInput" placeholder="sk-ant-..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <div id="apiKeyStatus" style="font-size:.83rem;color:var(--muted);margin-bottom:1rem"></div>
+    <p class="info" style="margin-bottom:1rem">Don't have a key? Get one free at <strong>console.anthropic.com</strong> — takes about 2 minutes. Claude API usage is billed by Anthropic directly based on your usage, typically fractions of a cent per narrative.</p>
+    <div class="modal-btns">
+      <button class="btn btn-green" onclick="saveApiKey()">Save Key</button>
+      <button class="btn btn-gray" onclick="clearApiKey()">Remove Key</button>
+      <button class="btn btn-slate" onclick="closeApiKey()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// DEFAULT GMVEMSC PROTOCOL
+// ══════════════════════════════════════════
+const DEFAULT_PROTOCOL = {
+  chiefComplaints: [
+    "Chest pain / pressure",
+    "Difficulty breathing",
+    "Altered mental status",
+    "Severe headache",
+    "Abdominal pain",
+    "Traumatic injury",
+    "Seizure activity",
+    "Allergic reaction / anaphylaxis",
+    "Syncope / near-syncope",
+    "Severe hemorrhage",
+    "Stroke / facial droop",
+    "Cardiac arrest",
+    "Overdose / poisoning",
+    "OB / pregnancy emergency",
+    "Diabetic emergency"
+  ],
+  assessmentFindings: [
+    "Patient alert and oriented",
+    "Altered / confused presentation",
+    "GCS declining",
+    "Pale and diaphoretic",
+    "Cyanosis noted",
+    "Respiratory distress",
+    "Absent / diminished breath sounds",
+    "Wheezing noted",
+    "Stridor noted",
+    "Hypotension",
+    "Hypertension",
+    "Tachycardia",
+    "Bradycardia",
+    "Irregular rhythm",
+    "Fever present",
+    "Pupils unequal / sluggish",
+    "Signs of trauma",
+    "Active bleeding",
+    "Edema noted",
+    "Jugular vein distension"
+  ],
+  interventions: [
+    { name: "Supplemental oxygen applied", outcome: false },
+    { name: "BVM ventilation initiated", outcome: true },
+    { name: "IV access established", outcome: true },
+    { name: "IO access established", outcome: true },
+    { name: "Airway — OPA/NPA placed", outcome: true },
+    { name: "Endotracheal intubation", outcome: true },
+    { name: "Supraglottic airway placed", outcome: true },
+    { name: "Needle decompression performed", outcome: true },
+    { name: "Tourniquet applied", outcome: true },
+    { name: "Wound packing performed", outcome: true },
+    { name: "Splinting applied", outcome: true },
+    { name: "Spinal motion restriction", outcome: false },
+    { name: "Position of comfort", outcome: false },
+    { name: "CPR initiated", outcome: false },
+    { name: "Manual defibrillation", outcome: true },
+    { name: "Cardioversion", outcome: true },
+    { name: "Transcutaneous pacing", outcome: true },
+    { name: "Glucometry obtained", outcome: false }
+  ],
+  medications: [
+    { name: "Aspirin", outcome: false },
+    { name: "Nitroglycerin", outcome: false },
+    { name: "Epinephrine (1:1,000)", outcome: false },
+    { name: "Epinephrine (1:10,000)", outcome: false },
+    { name: "Albuterol", outcome: false },
+    { name: "Ipratropium", outcome: false },
+    { name: "Diphenhydramine", outcome: false },
+    { name: "Naloxone", outcome: false },
+    { name: "Dextrose (D10/D50)", outcome: false },
+    { name: "Amiodarone", outcome: false },
+    { name: "Lidocaine", outcome: false },
+    { name: "Atropine", outcome: false },
+    { name: "Adenosine", outcome: false },
+    { name: "Glucagon", outcome: false },
+    { name: "Sodium bicarbonate", outcome: false },
+    { name: "Calcium chloride", outcome: false },
+    { name: "Magnesium sulfate", outcome: false },
+    { name: "Ketorolac", outcome: false },
+    { name: "Ondansetron", outcome: false },
+    { name: "Midazolam", outcome: false },
+    { name: "Morphine", outcome: false },
+    { name: "Fentanyl", outcome: false },
+    { name: "Labetalol", outcome: false },
+    { name: "Dopamine drip", outcome: false }
+  ],
+  monitoring: [
+    { name: "12-lead ECG acquired", outcome: false },
+    { name: "Continuous cardiac monitoring", outcome: false },
+    { name: "Pulse oximetry monitoring", outcome: false },
+    { name: "Capnography (ETCO2) monitoring", outcome: false },
+    { name: "Blood glucose check", outcome: false },
+    { name: "Vital signs reassessment", outcome: false },
+    { name: "Stroke scale assessment", outcome: false },
+    { name: "Pain scale reassessment", outcome: false },
+    { name: "Neuro reassessment", outcome: false }
+  ],
+  transport: [
+    "Transported code 1 (non-emergency)",
+    "Transported code 3 (lights and sirens)",
+    "Air transport requested",
+    "Refusal of transport — AMA",
+    "Transferred care to receiving facility"
+  ]
+};
+
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+let protocol = JSON.parse(JSON.stringify(DEFAULT_PROTOCOL));
+let eventLog = [];       // [{id, section, name, time, outcome}]
+let pendingEntry = null; // entry waiting for outcome
+let badgeCounts = {};    // name -> count
+let narMobileVisible = false;
+
+// ══════════════════════════════════════════
+// BUILD ACTION PANEL
+// ══════════════════════════════════════════
+function buildActionPanel() {
+  const panel = document.getElementById('actionPanel');
+  panel.innerHTML = '';
+  badgeCounts = {};
+
+  const sections = [
+    { label: 'Chief Complaint', key: 'chiefComplaints', simple: true },
+    { label: 'Assessment Findings', key: 'assessmentFindings', simple: true },
+    { label: 'Interventions', key: 'interventions', simple: false },
+    { label: 'Medications Given', key: 'medications', simple: false },
+    { label: 'Monitoring', key: 'monitoring', simple: false },
+    { label: 'Transport', key: 'transport', simple: true }
+  ];
+
+  sections.forEach(sec => {
+    const items = protocol[sec.key] || [];
+
+    const div = document.createElement('div');
+    div.className = 'sec';
+    div.id = 'sec_' + sec.key;
+
+    // Section header with edit toggle
+    const header = document.createElement('div');
+    header.className = 'sec-header';
+    header.innerHTML = `
+      <div class="sec-label">${sec.label}</div>
+      <button class="sec-edit-btn" id="editbtn_${sec.key}" onclick="toggleEditMode('${sec.key}')" title="Edit this section">✏ Edit</button>
+    `;
+    div.appendChild(header);
+
+    // Edit zone (hidden by default)
+    const editZone = document.createElement('div');
+    editZone.className = 'edit-zone';
+    editZone.id = 'editzone_' + sec.key;
+
+    const outcomeCheckHtml = !sec.simple ? `
+      <div class="edit-outcome-row">
+        <input type="checkbox" id="oc_${sec.key}">
+        <label for="oc_${sec.key}">Ask Successful / Unsuccessful after tap</label>
+      </div>` : '';
+
+    editZone.innerHTML = `
+      ${outcomeCheckHtml}
+      <div class="edit-add-row">
+        <input type="text" id="addinput_${sec.key}" placeholder="Add item..." onkeydown="if(event.key==='Enter')addSectionItem('${sec.key}',${sec.simple})">
+        <button onclick="addSectionItem('${sec.key}',${sec.simple})">+ Add</button>
+      </div>
+    `;
+    div.appendChild(editZone);
+
+    // Action grid
+    const grid = document.createElement('div');
+    grid.className = 'action-grid';
+    grid.id = 'grid_' + sec.key;
+    div.appendChild(grid);
+
+    panel.appendChild(div);
+
+    // Render items
+    renderSectionItems(sec.key, sec.simple);
+  });
+}
+
+function renderSectionItems(key, simple) {
+  const grid = document.getElementById('grid_' + key);
+  if (!grid) return;
+  const secDiv = document.getElementById('sec_' + key);
+  const inEditMode = secDiv && secDiv.classList.contains('edit-mode');
+
+  const sectionLabels = {
+    chiefComplaints: 'Chief Complaint',
+    assessmentFindings: 'Assessment Findings',
+    interventions: 'Interventions',
+    medications: 'Medications Given',
+    monitoring: 'Monitoring',
+    transport: 'Transport'
+  };
+  const sectionLabel = sectionLabels[key] || key;
+
+  grid.innerHTML = '';
+  const items = protocol[key] || [];
+
+  if (!items.length) {
+    grid.innerHTML = '<div style="color:#aaa;font-style:italic;font-size:.83rem;padding:.4rem">No items. Use Edit to add some.</div>';
+    return;
+  }
+
+  items.forEach((item, index) => {
+    const name = simple ? item : item.name;
+    const hasOutcome = !simple && item.outcome;
+
+    const btn = document.createElement('button');
+    btn.className = 'action-btn' + (hasOutcome ? ' has-outcome' : '');
+    btn.innerHTML = `
+      <span class="btn-label">${name}</span>
+      <span class="badge" id="badge_${slugify(name)}" style="display:none">0</span>
+      <button class="del-btn" onclick="deleteSectionItem('${key}',${index},${simple});event.stopPropagation();" title="Remove">✕</button>
+    `;
+
+    if (!inEditMode) {
+      btn.addEventListener('click', () => logAction(name, sectionLabel, hasOutcome, btn));
+    }
+
+    grid.appendChild(btn);
+  });
+
+  // Restore badge counts
+  Object.entries(badgeCounts).forEach(([slug, count]) => {
+    const b = document.getElementById('badge_' + slug);
+    if (b) { b.style.display = 'inline-block'; b.textContent = count; }
+  });
+}
+
+function toggleEditMode(key) {
+  const secDiv = document.getElementById('sec_' + key);
+  const editZone = document.getElementById('editzone_' + key);
+  const editBtn = document.getElementById('editbtn_' + key);
+  const isOpen = secDiv.classList.contains('edit-mode');
+
+  secDiv.classList.toggle('edit-mode', !isOpen);
+  editZone.classList.toggle('open', !isOpen);
+  editBtn.classList.toggle('active', !isOpen);
+  editBtn.textContent = isOpen ? '✏ Edit' : '✓ Done';
+
+  const simple = ['chiefComplaints','assessmentFindings','transport'].includes(key);
+  renderSectionItems(key, simple);
+}
+
+function addSectionItem(key, simple) {
+  const input = document.getElementById('addinput_' + key);
+  const val = input.value.trim();
+  if (!val) return;
+
+  const items = protocol[key];
+  if (simple) {
+    if (items.includes(val)) { showToast('Already exists.', 'err'); return; }
+    items.push(val);
+  } else {
+    const ocCheck = document.getElementById('oc_' + key);
+    const hasOutcome = ocCheck ? ocCheck.checked : false;
+    if (items.find(i => i.name === val)) { showToast('Already exists.', 'err'); return; }
+    items.push({ name: val, outcome: hasOutcome });
+    if (ocCheck) ocCheck.checked = false;
+  }
+
+  saveCustomProtocol();
+  input.value = '';
+  renderSectionItems(key, simple);
+  showToast(`"${val}" added.`, 'ok');
+}
+
+function deleteSectionItem(key, index, simple) {
+  protocol[key].splice(index, 1);
+  saveCustomProtocol();
+  renderSectionItems(key, simple);
+}
+
+function saveCustomProtocol() {
+  localStorage.setItem('ems_custom_protocol', JSON.stringify(protocol));
+}
+
+function loadCustomProtocol() {
+  const saved = localStorage.getItem('ems_custom_protocol');
+  if (saved) {
+    try { protocol = JSON.parse(saved); } catch(e) {}
+  }
+}
+
+function slugify(s) {
+  return s.replace(/[^a-z0-9]/gi,'_').toLowerCase();
+}
+
+// ══════════════════════════════════════════
+// LOG AN ACTION
+// ══════════════════════════════════════════
+function logAction(name, section, askOutcome, btn) {
+  const entry = {
+    id: Date.now() + Math.random(),
+    section,
+    name,
+    time: new Date(),
+    outcome: null
+  };
+
+  if (askOutcome) {
+    pendingEntry = { entry, btn };
+    document.getElementById('outcomeModalTitle').textContent = name;
+    document.getElementById('outcomeModalSub').textContent = 'Record the outcome for this intervention:';
+    document.getElementById('outcomeModal').classList.add('open');
+  } else {
+    commitEntry(entry, btn);
+  }
+}
+
+function logOutcome(result) {
+  document.getElementById('outcomeModal').classList.remove('open');
+  if (!pendingEntry) return;
+  const { entry, btn } = pendingEntry;
+  entry.outcome = result;
+  commitEntry(entry, btn);
+  pendingEntry = null;
+}
+
+function commitEntry(entry, btn) {
+  eventLog.push(entry);
+
+  // Update badge
+  const slug = slugify(entry.name);
+  badgeCounts[slug] = (badgeCounts[slug] || 0) + 1;
+  const badge = document.getElementById('badge_' + slug);
+  if (badge) {
+    badge.style.display = 'inline-block';
+    badge.textContent = badgeCounts[slug];
+  }
+
+  renderLog();
+}
+
+// ══════════════════════════════════════════
+// RENDER LOG
+// ══════════════════════════════════════════
+function renderLog() {
+  const body = document.getElementById('logBody');
+  const empty = document.getElementById('logEmpty');
+  if (!eventLog.length) {
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  // Remove all entries except the empty placeholder
+  Array.from(body.querySelectorAll('.log-entry')).forEach(el => el.remove());
+
+  eventLog.forEach((entry, i) => {
+    const div = document.createElement('div');
+    let cls = 'log-entry';
+    if (entry.outcome === 'successful') cls += ' outcome-success';
+    if (entry.outcome === 'unsuccessful') cls += ' outcome-fail';
+    div.className = cls;
+
+    const timeStr = entry.time.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+
+    let outcomeHtml = '';
+    if (entry.outcome === 'successful') outcomeHtml = '<div class="log-outcome ok">✔ Successful</div>';
+    if (entry.outcome === 'unsuccessful') outcomeHtml = '<div class="log-outcome fail">✘ Unsuccessful</div>';
+
+    div.innerHTML = `
+      <div class="log-num">${i+1}</div>
+      <div class="log-text">
+        <div class="log-item-name">${entry.name}</div>
+        <div class="log-meta">${entry.section} · ${timeStr}</div>
+        ${outcomeHtml}
+      </div>
+      <button class="log-del" title="Remove" onclick="deleteEntry(${i})">✕</button>
+    `;
+    body.appendChild(div);
+  });
+}
+
+function deleteEntry(index) {
+  const entry = eventLog[index];
+  eventLog.splice(index, 1);
+
+  // Recount badges
+  badgeCounts = {};
+  eventLog.forEach(e => {
+    const slug = slugify(e.name);
+    badgeCounts[slug] = (badgeCounts[slug] || 0) + 1;
+  });
+
+  // Refresh all badges
+  document.querySelectorAll('.badge').forEach(b => {
+    b.style.display = 'none';
+    b.textContent = '0';
+  });
+  Object.entries(badgeCounts).forEach(([slug, count]) => {
+    const b = document.getElementById('badge_' + slug);
+    if (b) { b.style.display = 'inline-block'; b.textContent = count; }
+  });
+
+  renderLog();
+}
+
+// ══════════════════════════════════════════
+// BUILD NARRATIVE
+// ══════════════════════════════════════════
+// ══════════════════════════════════════════
+// SHARED: FORMAT RAW EVENT LOG FOR AI GENERATION
+// Includes real timestamps — neither the old local template nor the
+// old polish flow ever passed these to the model.
+// ══════════════════════════════════════════
+function formatEventLogForAI() {
+  const unit = document.getElementById('medicUnit').value || 'The crew';
+  const lines = eventLog.map((e, i) => {
+    const t = e.time.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    let line = `${i+1}. [${t}] (${e.section}) ${e.name}`;
+    if (e.outcome === 'successful') line += ' — outcome: successful';
+    if (e.outcome === 'unsuccessful') line += ' — outcome: unsuccessful';
+    return line;
+  });
+  return { unit, logText: lines.join('\n') };
+}
+
+// ══════════════════════════════════════════
+// LOCAL (OFFLINE) NARRATIVE — fallback when no API key
+// or no connectivity. Not the primary generation path.
+// ══════════════════════════════════════════
+function buildLocalNarrative() {
+  const unit = document.getElementById('medicUnit').value || 'The crew';
+
+  // Group events in order
+  const complaints = eventLog.filter(e => e.section === 'Chief Complaint');
+  const findings   = eventLog.filter(e => e.section === 'Assessment Findings');
+  const intervs    = eventLog.filter(e => e.section === 'Interventions');
+  const meds       = eventLog.filter(e => e.section === 'Medications Given');
+  const monitoring = eventLog.filter(e => e.section === 'Monitoring');
+  const transport  = eventLog.filter(e => e.section === 'Transport');
+
+  let parts = [];
+
+  // Dispatch / contact line
+  if (complaints.length) {
+    const cx = complaints.map(e => e.name.toLowerCase()).join(', ');
+    parts.push(`${unit} was dispatched to and made contact with the patient, who presented with the following chief complaint(s): ${cx}.`);
+  } else {
+    parts.push(`${unit} made contact with the patient.`);
+  }
+
+  // Assessment
+  if (findings.length) {
+    const countMap = {};
+    findings.forEach(e => { countMap[e.name] = (countMap[e.name]||0)+1; });
+    const lines = Object.entries(countMap).map(([name, count]) => {
+      return count > 1 ? `${name.toLowerCase()} (noted x${count})` : name.toLowerCase();
+    });
+    parts.push(`On assessment, the following findings were noted: ${lines.join('; ')}.`);
+  }
+
+  // Monitoring
+  if (monitoring.length) {
+    const monLines = [];
+    const monMap = {};
+    monitoring.forEach(e => { monMap[e.name] = (monMap[e.name]||0)+1; });
+    Object.entries(monMap).forEach(([name, count]) => {
+      let line = name;
+      if (count > 1) line += ` (performed x${count})`;
+      monLines.push(line);
+    });
+    parts.push(`${unit} initiated monitoring including: ${monLines.join(', ')}.`);
+  }
+
+  // Interventions in order
+  if (intervs.length) {
+    intervs.forEach(e => {
+      // Clean up name: remove trailing past-tense duplication e.g. "BVM ventilation initiated" → "BVM ventilation"
+      const cleanName = e.name
+        .replace(/\s+initiated$/i, '')
+        .replace(/\s+performed$/i, '')
+        .replace(/\s+applied$/i, '')
+        .replace(/\s+attempted$/i, '');
+      let line = `${unit} ${cleanName.toLowerCase()} as noted in the flowchart.`;
+      if (e.outcome === 'successful') line += ' Intervention was successful.';
+      if (e.outcome === 'unsuccessful') line += ' Intervention was unsuccessful.';
+      parts.push(line);
+    });
+  }
+
+  // Medications in order
+  if (meds.length) {
+    meds.forEach(e => {
+      let line = `${e.name} was administered per protocol, as noted in the flowchart.`;
+      if (e.outcome === 'successful') line += ' Patient response was noted as successful.';
+      if (e.outcome === 'unsuccessful') line += ' Patient did not respond as expected.';
+      parts.push(line);
+    });
+  }
+
+  // Transport
+  if (transport.length) {
+    transport.forEach(e => {
+      parts.push(`${e.name}.`);
+    });
+  } else {
+    parts.push(`Care and transport status to be documented.`);
+  }
+
+  return parts.join('\n\n');
+}
+
+// ══════════════════════════════════════════
+// PRIMARY GENERATION FLOW
+// One button. If a Claude API key is configured and the device is
+// online, Claude generates the narrative directly from the raw,
+// timestamped event log. Otherwise, falls back to the local
+// offline template — and says so, honestly, in the status line.
+// ══════════════════════════════════════════
+async function generateNarrative() {
+  if (!eventLog.length) { showToast('Log some events first.', 'err'); return; }
+  if (!canBuildNarrative()) {
+    document.getElementById('subOverlay').classList.add('open');
+    return;
+  }
+
+  const narEl = document.getElementById('narText');
+  const btn = document.getElementById('generateBtn');
+  const statusEl = document.getElementById('narStatus');
+
+  const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+
+  if (hasApiKey() && !offline) {
+    btn.classList.add('loading');
+    btn.innerHTML = '<span class="spinner"></span> Generating...';
+    statusEl.textContent = 'Sending to Claude...';
+
+    try {
+      await generateWithClaude();
+      statusEl.textContent = `Generated by Claude · ${new Date().toLocaleTimeString()} · ${eventLog.length} events`;
+      showToast('Narrative generated!', 'ok');
+    } catch (err) {
+      console.error('Claude generation error:', err);
+      // Honest fallback — explain what happened, don't just fail silently
+      const narrative = buildLocalNarrative();
+      narEl.textContent = narrative;
+      narEl.classList.remove('empty');
+      let reason = err.message || 'Unknown error';
+      if (reason.includes('401') || reason.toLowerCase().includes('invalid') || reason.toLowerCase().includes('authentication')) {
+        statusEl.textContent = `⚠ Claude API key invalid — showing offline narrative instead. Check your key in Settings.`;
+      } else {
+        statusEl.textContent = `⚠ Claude request failed (${reason}) — showing offline narrative instead.`;
+      }
+      showToast('Claude failed — using offline narrative.', 'err');
+    } finally {
+      btn.classList.remove('loading');
+      btn.innerHTML = '✨ Generate Narrative';
+    }
+  } else {
+    const narrative = buildLocalNarrative();
+    narEl.textContent = narrative;
+    narEl.classList.remove('empty');
+    if (!hasApiKey()) {
+      statusEl.textContent = `Offline narrative · ${eventLog.length} events · Add a Claude API key in Settings for AI-generated narratives`;
+    } else {
+      statusEl.textContent = `Offline narrative · ${eventLog.length} events · No connection — Claude needs internet access`;
+    }
+  }
+
+  consumeFreeUse();
+
+  // Show panel on mobile if hidden
+  if (window.innerWidth <= 1100 && !narMobileVisible) {
+    document.getElementById('narPanel').style.display = 'flex';
+    narMobileVisible = true;
+  }
+}
+
+// ══════════════════════════════════════════
+// GENERATE DIRECTLY WITH CLAUDE FROM THE RAW EVENT LOG
+// This is the primary generation path, not a polish pass on
+// already-built text. Sends real timestamps.
+// ══════════════════════════════════════════
+async function generateWithClaude() {
+  const { unit, logText } = formatEventLogForAI();
+  const narEl = document.getElementById('narText');
+
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': getApiKey(),
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-5-5',
+      max_tokens: 1200,
+      system: `You are an experienced paramedic writing a patient care narrative for an ePCR from a tapped, timestamped event log. This is a legal document.
+
+Strict rules:
+- NEVER invent, infer, or assume any finding, vital sign, time, medication, or intervention that is not explicitly present in the event log provided.
+- NEVER add dosages — where the log lists a medication or intervention, write "as noted in the flowchart" instead of inventing a dose or route.
+- Use the actual timestamps provided when they add clarity (e.g. "At 14:32, IV access was established"), but do not force a time into every sentence — use judgment for natural flow.
+- Write in past tense, third person, using the unit name provided.
+- Organize chronologically and logically: dispatch/contact → assessment findings → monitoring → interventions and medications in the order they occurred → transport.
+- Distinguish clearly between what was directly observed/performed by the crew versus anything reported — if the log doesn't specify a source, do not assume either way.
+- Professional, objective clinical tone. No embellishment, no editorializing, no speculation about diagnosis.
+- Output ONLY the narrative text. No headers, no bullet points, no commentary, no markdown formatting.`,
+      messages: [{
+        role: 'user',
+        content: `Unit: ${unit}\n\nTimestamped event log (tap order = chronological order):\n\n${logText}\n\nWrite the complete patient care narrative from this log.`
+      }]
+    })
+  });
+
+  const data = await resp.json();
+  if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+  if (!data.content || !data.content[0] || !data.content[0].text) throw new Error('Empty response from Claude');
+
+  const narrative = data.content[0].text.trim();
+  narEl.textContent = narrative;
+  narEl.classList.remove('empty');
+}
+
+// ══════════════════════════════════════════
+// API KEY STORAGE
+// Native: iOS Keychain via a dedicated Capacitor plugin (KeychainPlugin.swift).
+// Web/testing fallback: localStorage (clearly not secure — only used when
+// not running as a native app, e.g. previewing in a browser).
+// getApiKey()/hasApiKey() stay synchronous by reading from an in-memory
+// cache that's populated once at launch by loadApiKeyFromStorage().
+// ══════════════════════════════════════════
+let _cachedApiKey = null;
+
+function hasApiKey() {
+  return !!_cachedApiKey;
+}
+
+function getApiKey() {
+  return _cachedApiKey || '';
+}
+
+async function loadApiKeyFromStorage() {
+  try {
+    if (window.Capacitor && window.Capacitor.isNativePlatform() && window.Capacitor.Plugins.Keychain) {
+      const result = await window.Capacitor.Plugins.Keychain.getKey();
+      _cachedApiKey = (result && result.value) ? result.value : null;
+    } else {
+      _cachedApiKey = localStorage.getItem('ems_api_key_insecure_web_only') || null;
+    }
+  } catch (e) {
+    _cachedApiKey = null;
+  }
+  updateApiKeyStatusUI();
+}
+
+async function saveApiKey() {
+  const input = document.getElementById('apiKeyInput');
+  const val = input.value.trim();
+  if (!val) { showToast('Enter a key first.', 'err'); return; }
+  if (!val.startsWith('sk-ant-')) {
+    showToast("That doesn't look like a valid Anthropic key — it should start with sk-ant-", 'err');
+    return;
+  }
+  try {
+    if (window.Capacitor && window.Capacitor.isNativePlatform() && window.Capacitor.Plugins.Keychain) {
+      await window.Capacitor.Plugins.Keychain.setKey({ value: val });
+    } else {
+      localStorage.setItem('ems_api_key_insecure_web_only', val);
+    }
+    _cachedApiKey = val;
+    input.value = '';
+    updateApiKeyStatusUI();
+    showToast('API key saved securely.', 'ok');
+  } catch (e) {
+    showToast('Failed to save key: ' + e.message, 'err');
+  }
+}
+
+async function clearApiKey() {
+  try {
+    if (window.Capacitor && window.Capacitor.isNativePlatform() && window.Capacitor.Plugins.Keychain) {
+      await window.Capacitor.Plugins.Keychain.deleteKey();
+    } else {
+      localStorage.removeItem('ems_api_key_insecure_web_only');
+    }
+    _cachedApiKey = null;
+    updateApiKeyStatusUI();
+    showToast('API key removed — narratives will use offline drafts.', 'ok');
+  } catch (e) {
+    showToast('Failed to remove key: ' + e.message, 'err');
+  }
+}
+
+function updateApiKeyStatusUI() {
+  const statusEl = document.getElementById('apiKeyStatus');
+  if (!statusEl) return;
+  if (hasApiKey()) {
+    const key = getApiKey();
+    const masked = key.slice(0, 10) + '••••••••';
+    statusEl.textContent = `✓ Key set (${masked}) — narratives will be generated by Claude.`;
+    statusEl.style.color = 'var(--green)';
+    statusEl.style.fontWeight = '700';
+  } else {
+    statusEl.textContent = 'No key set — narratives will use the offline local draft.';
+    statusEl.style.color = 'var(--orange)';
+    statusEl.style.fontWeight = '700';
+  }
+}
+
+function openApiKeyModal() {
+  updateApiKeyStatusUI();
+  document.getElementById('apiKeyModal').classList.add('open');
+}
+function closeApiKey() {
+  document.getElementById('apiKeyModal').classList.remove('open');
+}
+
+// ══════════════════════════════════════════
+// COPY / DOWNLOAD
+// ══════════════════════════════════════════
+function copyNarrative() {
+  const text = document.getElementById('narText').textContent.trim();
+  if (!text) { showToast('Nothing to copy.', 'err'); return; }
+  navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard!', 'ok'));
+}
+
+function downloadNarrative() {
+  const text = document.getElementById('narText').textContent.trim();
+  if (!text) { showToast('Nothing to download.', 'err'); return; }
+  const blob = new Blob([text], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const unit = document.getElementById('medicUnit').value.replace(/\s/g,'_');
+  a.download = `EMS_Narrative_${unit}_${new Date().toISOString().slice(0,10)}.txt`;
+  a.click();
+}
+
+// ══════════════════════════════════════════
+// PROTOCOL MANAGEMENT
+// ══════════════════════════════════════════
+function openProto() { document.getElementById('protoModal').classList.add('open'); }
+function closeProto() { document.getElementById('protoModal').classList.remove('open'); }
+
+function resetProto() {
+  protocol = JSON.parse(JSON.stringify(DEFAULT_PROTOCOL));
+  localStorage.removeItem('ems_custom_protocol');
+  document.getElementById('protoNameDisplay').textContent = 'Active: GMVEMSC Protocol (Default)';
+  buildActionPanel();
+  showToast('Reset to GMVEMSC default.', 'ok');
+}
+
+// ══════════════════════════════════════════
+// CLEAR / RESET
+// ══════════════════════════════════════════
+function clearAll() {
+  if (!confirm('Clear all logged events?')) return;
+  eventLog = [];
+  badgeCounts = {};
+  document.querySelectorAll('.badge').forEach(b => { b.style.display='none'; b.textContent='0'; });
+  renderLog();
+  const narEl = document.getElementById('narText');
+  narEl.textContent = 'Hit "Build Narrative" to generate your report from the event log.';
+  narEl.classList.add('empty');
+  document.getElementById('narStatus').textContent = '';
+  showToast('Cleared.', 'ok');
+}
+
+// ══════════════════════════════════════════
+// MOBILE NAR TOGGLE
+// ══════════════════════════════════════════
+function toggleNarMobile() {
+  const panel = document.getElementById('narPanel');
+  narMobileVisible = !narMobileVisible;
+  panel.style.display = narMobileVisible ? 'flex' : 'none';
+}
+
+// ══════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════
+function showToast(msg, type='ok') {
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2800);
+}
+
+// Close modals on overlay click
+document.getElementById('outcomeModal').addEventListener('click', function(e) {
+  if (e.target === this) logOutcome(null);
+});
+document.getElementById('protoModal').addEventListener('click', function(e) {
+  if (e.target === this) closeProto();
+});
+
+// ══════════════════════════════════════════
+// MEDIC UNITS MANAGEMENT
+// ══════════════════════════════════════════
+const DEFAULT_UNITS = ['Crew (Generic)','Medic 1','Medic 2','Medic 3','Medic 4','Medic 5','Medic 6','Medic 7','Medic 8'];
+
+function loadUnits() {
+  const saved = localStorage.getItem('ems_units');
+  return saved ? JSON.parse(saved) : [...DEFAULT_UNITS];
+}
+
+function saveUnits(units) {
+  localStorage.setItem('ems_units', JSON.stringify(units));
+}
+
+function renderUnitSelect() {
+  const units = loadUnits();
+  const sel = document.getElementById('medicUnit');
+  const current = sel.value;
+  sel.innerHTML = '<option value="The crew">Select Unit</option>';
+  units.forEach(u => {
+    const opt = document.createElement('option');
+    opt.value = u;
+    opt.textContent = u;
+    if (u === current) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function renderUnitsList() {
+  const units = loadUnits();
+  const list = document.getElementById('unitsList');
+  list.innerHTML = '';
+  if (!units.length) {
+    list.innerHTML = '<div style="color:#aaa;font-style:italic;font-size:.88rem;padding:.5rem">No units added yet.</div>';
+    return;
+  }
+  units.forEach((u, i) => {
+    const row = document.createElement('div');
+    row.className = 'unit-row';
+    row.innerHTML = `<span>${u}</span><button onclick="deleteUnit(${i})" title="Remove">✕</button>`;
+    list.appendChild(row);
+  });
+}
+
+function addUnit() {
+  const input = document.getElementById('unitInput');
+  const val = input.value.trim();
+  if (!val) return;
+  const units = loadUnits();
+  if (units.includes(val)) { showToast('Unit already exists.', 'err'); return; }
+  units.push(val);
+  saveUnits(units);
+  input.value = '';
+  renderUnitsList();
+  renderUnitSelect();
+  showToast(`${val} added.`, 'ok');
+}
+
+function deleteUnit(index) {
+  const units = loadUnits();
+  units.splice(index, 1);
+  saveUnits(units);
+  renderUnitsList();
+  renderUnitSelect();
+}
+
+function resetUnits() {
+  saveUnits([...DEFAULT_UNITS]);
+  renderUnitsList();
+  renderUnitSelect();
+  showToast('Reset to defaults.', 'ok');
+}
+
+function openUnits() {
+  renderUnitsList();
+  document.getElementById('unitsModal').classList.add('open');
+}
+
+function closeUnits() {
+  document.getElementById('unitsModal').classList.remove('open');
+}
+
+// ══════════════════════════════════════════
+// CHATGPT PROMPT COPY
+// ══════════════════════════════════════════
+function copyGptPrompt() {
+  if (!eventLog.length) {
+    showToast('Log some events first.', 'err');
+    return;
+  }
+  const { unit, logText } = formatEventLogForAI();
+
+  const prompt = `You are an experienced paramedic writing a patient care narrative for an ePCR from a tapped, timestamped event log. This is a legal document.
+
+Strict rules:
+- NEVER invent, infer, or assume any finding, vital sign, time, medication, or intervention that is not explicitly present in the event log below.
+- NEVER add dosages — where the log lists a medication or intervention, write "as noted in the flowchart" instead of inventing a dose or route.
+- Use the actual timestamps when they add clarity, but don't force a time into every sentence.
+- Write in past tense, third person, using the unit name provided.
+- Organize chronologically: dispatch/contact → assessment findings → monitoring → interventions and medications in the order they occurred → transport.
+- Professional, objective clinical tone. No embellishment, no speculation about diagnosis.
+- Output ONLY the narrative text — no headers, no bullet points, no commentary.
+
+Unit: ${unit}
+
+Timestamped event log (tap order = chronological order):
+
+${logText}
+
+Write the complete patient care narrative from this log.`;
+
+  navigator.clipboard.writeText(prompt).then(() => {
+    showToast('ChatGPT prompt copied! Paste into ChatGPT.', 'ok');
+  }).catch(() => {
+    showToast('Copy failed — try a different browser.', 'err');
+  });
+}
+
+// Close units modal on overlay click
+document.getElementById('unitsModal').addEventListener('click', function(e) {
+  if (e.target === this) closeUnits();
+});
+
+
+function toggleSplashCheck() {
+  const cb = document.getElementById('splashCheck');
+  cb.checked = !cb.checked;
+  document.getElementById('splashBtn').classList.toggle('ready', cb.checked);
+}
+
+function closeSplash() {
+  document.getElementById('splashOverlay').style.display = 'none';
+  checkSubscriptionStatus();
+}
+
+// ══════════════════════════════════════════
+// SUBSCRIPTION / USAGE CAP / STOREKIT
+// ══════════════════════════════════════════
+const PRODUCT_ID = 'com.supersonicandchill.emsnarrator.monthly';
+const FREE_MONTHLY_LIMIT = 3;
+
+function getSubscriptionState() {
+  const raw = localStorage.getItem('ems_sub');
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
+}
+
+function setSubscriptionState(state) {
+  localStorage.setItem('ems_sub', JSON.stringify(state));
+}
+
+function currentMonthKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth()}`;
+}
+
+function initUsageIfNeeded() {
+  let state = getSubscriptionState();
+  const monthKey = currentMonthKey();
+  if (!state) {
+    state = { subscribed: false, monthKey, usageCount: 0 };
+    setSubscriptionState(state);
+  } else if (state.monthKey !== monthKey) {
+    // New month — reset free usage count (subscribed status unaffected)
+    state.monthKey = monthKey;
+    state.usageCount = 0;
+    setSubscriptionState(state);
+  }
+  return state;
+}
+
+function getUsesRemaining(state) {
+  return Math.max(0, FREE_MONTHLY_LIMIT - state.usageCount);
+}
+
+function checkSubscriptionStatus() {
+  const state = initUsageIfNeeded();
+  const usageBar = document.getElementById('trialBar');
+
+  if (state.subscribed) {
+    usageBar.style.display = 'none';
+    return;
+  }
+
+  const remaining = getUsesRemaining(state);
+  usageBar.style.display = 'block';
+
+  if (remaining <= 0) {
+    usageBar.style.background = 'var(--red)';
+    usageBar.textContent = `⚠ You've used all 3 free narratives this month — upgrade for unlimited.`;
+  } else if (remaining === 1) {
+    usageBar.style.background = 'var(--red)';
+    usageBar.textContent = `⚠ 1 free narrative left this month.`;
+  } else {
+    usageBar.style.background = 'var(--green)';
+    usageBar.textContent = `🆓 ${remaining} free narratives left this month.`;
+  }
+}
+
+// Call this right before building a narrative — returns true if allowed to proceed
+function canBuildNarrative() {
+  const state = initUsageIfNeeded();
+  if (state.subscribed) return true;
+  return getUsesRemaining(state) > 0;
+}
+
+// Call this after a successful narrative build to consume one free use
+function consumeFreeUse() {
+  const state = initUsageIfNeeded();
+  if (state.subscribed) return;
+  state.usageCount += 1;
+  setSubscriptionState(state);
+  checkSubscriptionStatus();
+}
+
+async function purchaseSubscription() {
+  // Native StoreKit purchase via Capacitor plugin
+  try {
+    if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+      // Register listeners for purchase results
+      window.Capacitor.Plugins.StoreKit.addListener('purchaseSuccess', (data) => {
+        console.log('Purchase successful:', data);
+        onSubscriptionSuccess();
+      });
+      
+      window.Capacitor.Plugins.StoreKit.addListener('purchaseFailed', (data) => {
+        console.log('Purchase failed:', data);
+        showToast('Purchase cancelled or failed.', 'err');
+      });
+      
+      // Initiate purchase
+      const result = await window.Capacitor.Plugins.StoreKit.purchaseProduct({
+        productIdentifier: PRODUCT_ID
+      });
+      console.log('Purchase initiated:', result);
+    } else {
+      // Web fallback for testing — simulate success
+      showToast('Opening App Store...', 'ok');
+      setTimeout(() => {
+        onSubscriptionSuccess();
+      }, 1500);
+    }
+  } catch (e) {
+    console.error('Purchase error:', e);
+    showToast('Purchase failed: ' + e.message, 'err');
+  }
+}
+
+async function restorePurchases() {
+  try {
+    if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+      // Register listener for restore results
+      window.Capacitor.Plugins.StoreKit.addListener('purchaseRestored', (data) => {
+        console.log('Purchase restored:', data);
+        onSubscriptionSuccess();
+      });
+      
+      // Initiate restore
+      const result = await window.Capacitor.Plugins.StoreKit.restoreTransactions();
+      console.log('Restore initiated:', result);
+      showToast('Checking for previous purchases...', 'ok');
+    } else {
+      showToast('Restore not available on web.', 'err');
+    }
+  } catch (e) {
+    console.error('Restore error:', e);
+    showToast('Restore failed: ' + e.message, 'err');
+  }
+}
+
+function onSubscriptionSuccess() {
+  const state = getSubscriptionState() || initUsageIfNeeded();
+  state.subscribed = true;
+  setSubscriptionState(state);
+  document.getElementById('subOverlay').classList.remove('open');
+  document.getElementById('trialBar').style.display = 'none';
+  showToast('🎉 Subscribed! Welcome to EMS Narrator Pro.', 'ok');
+  // Prompt for review after successful sub
+  setTimeout(requestAppStoreReview, 3000);
+}
+
+// ══════════════════════════════════════════
+// LAUNCH-TIME SUBSCRIPTION TRUTH-CHECK
+// Local state (localStorage 'ems_sub') is a fast cache, not the source of
+// truth — it goes stale on reinstall. On every native launch, ask Apple
+// directly via StoreKit2's Transaction.currentEntitlements (checkEntitlement,
+// in StoreKitPlugin.swift) whether this device actually holds an active,
+// unrevoked subscription right now, and reconcile local state to match.
+// This is real cryptographic verification via Apple's signed transaction
+// data — not a local flag. Falls back to the older restoreTransactions()
+// sweep below only if the entitlement check itself is unavailable
+// (e.g. pre-iOS-15, or the plugin fails to load for some reason).
+// ══════════════════════════════════════════
+async function verifyEntitlementOnLaunch() {
+  if (!(window.Capacitor && window.Capacitor.isNativePlatform())) return;
+  if (!window.Capacitor.Plugins.StoreKit || !window.Capacitor.Plugins.StoreKit.checkEntitlement) {
+    // Plugin not available for some reason — fall back to the restore sweep.
+    silentRestoreOnLaunch();
+    return;
+  }
+
+  try {
+    const result = await window.Capacitor.Plugins.StoreKit.checkEntitlement({
+      productIdentifier: PRODUCT_ID
+    });
+
+    const state = getSubscriptionState() || initUsageIfNeeded();
+
+    if (result && result.entitled === true) {
+      // Apple confirms an active subscription — trust it over any stale
+      // local flag, including a reinstall that wiped localStorage.
+      state.subscribed = true;
+      setSubscriptionState(state);
+    } else if (result && result.entitled === false) {
+      // Apple confirms NO active subscription right now. If local state
+      // claimed otherwise, correct it — this catches expired/cancelled
+      // subscriptions that a stale local flag would keep granting access to.
+      if (state.subscribed) {
+        state.subscribed = false;
+        setSubscriptionState(state);
+      }
+    }
+    checkSubscriptionStatus();
+  } catch (e) {
+    // Entitlement check failed outright (e.g. iOS <15) — fall back to the
+    // restore-purchases sweep rather than leaving state unverified.
+    console.log('Entitlement check unavailable, falling back to restore sweep:', e.message);
+    silentRestoreOnLaunch();
+  }
+}
+
+// ══════════════════════════════════════════
+// SILENT RESTORE ON LAUNCH — FALLBACK ONLY
+// This used to be the primary launch-time reconciliation mechanism; it's
+// now a fallback for when verifyEntitlementOnLaunch() (real StoreKit2
+// entitlement verification, above) is unavailable. Runs quietly — no
+// toast, no review prompt.
+// ══════════════════════════════════════════
+async function silentRestoreOnLaunch() {
+  try {
+    if (!(window.Capacitor && window.Capacitor.isNativePlatform())) return;
+    const state = getSubscriptionState();
+    if (state && state.subscribed) return; // already known-subscribed locally
+
+    window.Capacitor.Plugins.StoreKit.addListener('purchaseRestored', (data) => {
+      console.log('Silent launch check found an existing subscription:', data);
+      const s = getSubscriptionState() || initUsageIfNeeded();
+      s.subscribed = true;
+      setSubscriptionState(s);
+      checkSubscriptionStatus();
+    });
+
+    await window.Capacitor.Plugins.StoreKit.restoreTransactions();
+  } catch (e) {
+    // Silent by design — this is a background reconciliation check, not
+    // a user-initiated action, so it should never surface an error toast.
+    console.log('Silent restore check skipped:', e.message);
+  }
+}
+
+function requestAppStoreReview() {
+  try {
+    if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+      // Calls SKStoreReviewController.requestReview() via Capacitor
+      const { App } = window.Capacitor.Plugins;
+      if (App && App.requestReview) App.requestReview();
+    }
+  } catch(e) {}
+}
+
+// ══════════════════════════════════════════
+// SECRET 5-TAP RESET (friend code workaround)
+// ══════════════════════════════════════════
+let logoTapCount = 0;
+let logoTapTimer = null;
+
+function handleLogoTap() {
+  logoTapCount++;
+  clearTimeout(logoTapTimer);
+  logoTapTimer = setTimeout(() => { logoTapCount = 0; }, 2000);
+
+  if (logoTapCount >= 5) {
+    logoTapCount = 0;
+    const state = initUsageIfNeeded();
+    state.usageCount = 0;
+    setSubscriptionState(state);
+    checkSubscriptionStatus();
+    document.getElementById('subOverlay').classList.remove('open');
+    showToast('🔄 Monthly count reset.', 'ok');
+  }
+}
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+loadCustomProtocol();
+renderUnitSelect();
+buildActionPanel();
+loadApiKeyFromStorage();
+verifyEntitlementOnLaunch();
+// Subscription check runs after splash is dismissed via closeSplash()
+</script>
+</body>
+</html>
